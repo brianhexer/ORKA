@@ -17,14 +17,24 @@ export class SceneManager {
     }
     
     init() {
+        // Ensure canvas has dimensions
+        if (!this.canvas.width || !this.canvas.height) {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        }
+        
         // Scene
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x1a1a1a);
         
-        // Camera
+        // Camera - use default aspect ratio if dimensions are invalid
+        const aspect = (this.canvas.width && this.canvas.height) 
+            ? this.canvas.width / this.canvas.height 
+            : window.innerWidth / window.innerHeight;
+        
         this.camera = new THREE.PerspectiveCamera(
             75,
-            this.canvas.width / this.canvas.height,
+            aspect,
             0.1,
             1000
         );
