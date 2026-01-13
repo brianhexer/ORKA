@@ -9,7 +9,7 @@ export class Mapper {
         this.points3D = [];
         this.keyframes = [];
         this.currentKeyframeId = 0;
-        this.keyframeThreshold = 0.5; // Minimum translation to create keyframe
+        this.keyframeThreshold = 0.01; // Minimum translation to create keyframe (lowered for more keyframes)
     }
     
     /**
@@ -55,22 +55,32 @@ export class Mapper {
     }
     
     triangulate(f1, f2, pose1, pose2) {
-        // Simplified triangulation
-        // In practice, would use proper camera projection matrices
+        // Improved triangulation using stereo vision principles
+        // Camera parameters (adjust based on actual camera)
+        const focalLength = 600; // pixels
+        const baseline = 0.1; // estimated baseline in world units
         
-        // Assume forward motion and estimate depth
+        // Compute disparity
         const dx = f2.x - f1.x;
         const dy = f2.y - f1.y;
         const disparity = Math.sqrt(dx * dx + dy * dy);
         
-        if (disparity < 1) return null;
+        // Need sufficient disparity for triangulation
+        if (disparity < 2) return null;
         
-        // Estimate depth (simplified)
-        const depth = 100 / (disparity + 1);
+        // Estimate depth using disparity
+        const depth = (focalLength * baseline) / (disparity + 0.1);
         
-        // Convert to 3D (simplified camera model)
-        const x = (f1.x - 320) * depth / 800;
-        const y = (f1.y - 240) * depth / 800;
+        // Validate depth
+        if (depth < 0.1 || depth > 50) return null;
+        
+        // Convert to 3D coordinates (camera coordinate system)
+        // Principal point assumed at image center
+        const cx = 320;
+        const cy = 240;
+        
+        const x = (f1.x - cx) * depth / focalLength;
+        const y = (f1.y - cy) * depth / focalLength;
         const z = depth;
         
         return new Vector3(x, y, z);
@@ -122,6 +132,7 @@ export class Mapper {
         const translation = currentPose.t.subtract(lastKeyframe.pose.t);
         const distance = translation.length();
         
-        return distance > this.keyframeThreshold;
+        // Lower threshold to create keyframes more frequently
+        return distance > 0.01 || this.keyframes.length < 2;
     }
 }

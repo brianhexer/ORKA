@@ -156,31 +156,32 @@ class SLAMApp {
                         filteredMatches
                     );
                     
-                    if (pose) {
+                    if (pose && filteredMatches.length > 0) {
+                        // Always try to triangulate points from matches
+                        if (this.lastPose) {
+                            // Triangulate points
+                            const newPoints = this.mapper.triangulatePoints(
+                                this.lastFeatures,
+                                features,
+                                this.lastPose,
+                                pose,
+                                filteredMatches
+                            );
+                            
+                            if (newPoints.length > 0) {
+                                this.mapper.addPoints(newPoints);
+                                this.pointCloudBuilder.addPoints(newPoints);
+                                this.updateView();
+                            }
+                        }
+                        
                         // Create keyframe if needed
                         const lastKeyframe = this.mapper.keyframes[this.mapper.keyframes.length - 1];
                         if (this.mapper.shouldCreateKeyframe(pose, lastKeyframe)) {
                             this.mapper.addKeyframe(pose, features, imageData);
-                            
-                            if (this.lastPose) {
-                                // Triangulate points
-                                const newPoints = this.mapper.triangulatePoints(
-                                    this.lastFeatures,
-                                    features,
-                                    this.lastPose,
-                                    pose,
-                                    filteredMatches
-                                );
-                                
-                                if (newPoints.length > 0) {
-                                    this.mapper.addPoints(newPoints);
-                                    this.pointCloudBuilder.addPoints(newPoints);
-                                    this.updateView();
-                                }
-                            }
-                            
-                            this.lastPose = pose;
                         }
+                        
+                        this.lastPose = pose;
                     }
                 }
             } else {
