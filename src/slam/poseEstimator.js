@@ -36,7 +36,7 @@ export class PoseEstimator {
         if (!E) return null;
         
         // Recover pose from essential matrix
-        const poses = this.recoverPose(E);
+        const poses = this.recoverPose(E, points1, points2);
         
         // Select best pose using triangulation check
         return this.selectBestPose(poses, normalized1, normalized2);
@@ -73,16 +73,35 @@ export class PoseEstimator {
         return new Matrix3();
     }
     
-    recoverPose(E) {
+    recoverPose(E, points1, points2) {
         // Simplified pose recovery - estimate translation from feature motion
         const poses = [];
         
-        // Return identity rotation with small forward translation
-        // In a real implementation, this would use SVD of E
-        poses.push({
-            R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-            t: new Vector3(0, 0, 0.05) // Small forward movement
-        });
+        // Compute average motion from feature matches
+        if (points1 && points2 && points1.length > 0) {
+            let avgDx = 0, avgDy = 0;
+            for (let i = 0; i < Math.min(points1.length, points2.length); i++) {
+                avgDx += points2[i].x - points1[i].x;
+                avgDy += points2[i].y - points1[i].y;
+            }
+            avgDx /= points1.length;
+            avgDy /= points1.length;
+            
+            // Estimate translation based on feature motion
+            const motion = Math.sqrt(avgDx * avgDx + avgDy * avgDy);
+            const translation = Math.min(motion * 0.01, 0.1); // Scale motion to translation
+            
+            poses.push({
+                R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                t: new Vector3(0, 0, translation) // Forward movement based on feature motion
+            });
+        } else {
+            // Default small forward movement
+            poses.push({
+                R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                t: new Vector3(0, 0, 0.05)
+            });
+        }
         
         return poses;
     }
