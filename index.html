@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLAM 3D Reconstruction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        #app {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        #controls-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+            z-index: 100;
+        }
+        
+        #controls-panel h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #4CAF50;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        
+        button.danger {
+            background: #f44336;
+        }
+        
+        button.danger:hover:not(:disabled) {
+            background: #da190b;
+        }
+        
+        #status-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            z-index: 100;
+        }
+        
+        .status-item {
+            margin-right: 20px;
+            display: inline-block;
+        }
+        
+        .status-label {
+            color: #aaa;
+            margin-right: 5px;
+        }
+        
+        .status-value {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        #webcam-preview {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            height: 240px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #4CAF50;
+            z-index: 100;
+        }
+        
+        #webcam-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .settings-panel {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+        
+        .settings-panel input[type="range"] {
+            width: 100%;
+        }
+        
+        .settings-panel input[type="number"] {
+            width: 100%;
+            padding: 5px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 3px;
+            color: #fff;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+            <div id="webcam-preview" style="display: none;">
+                <video id="webcam-video" autoplay playsinline muted></video>
+            </div>
+        </div>
+        
+        <div id="controls-panel">
+            <h2>SLAM Controls</h2>
+            <div class="control-group">
+                <button id="start-btn">Start Capture</button>
+                <button id="stop-btn" disabled>Stop Capture</button>
+                <button id="reset-btn" class="danger" disabled>Reset</button>
+            </div>
+            
+            <div class="control-group">
+                <button id="export-obj-btn" disabled>Export OBJ</button>
+                <button id="export-gltf-btn" disabled>Export GLTF</button>
+                <button id="export-ply-btn" disabled>Export PLY</button>
+            </div>
+            
+            <div class="settings-panel">
+                <div class="control-group">
+                    <label for="resolution">Resolution:</label>
+                    <select id="resolution" style="width: 100%; padding: 5px; background: #333; border: 1px solid #555; border-radius: 3px; color: #fff;">
+                        <option value="320x240">320x240</option>
+                        <option value="640x480" selected>640x480</option>
+                        <option value="1280x720">1280x720</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div id="status-bar">
+            <span class="status-item">
+                <span class="status-label">Status:</span>
+                <span class="status-value" id="status-value">Ready</span>
+            </span>
+            <span class="status-item">
+                <span class="status-label">Frames:</span>
+                <span class="status-value" id="frames-value">0</span>
+            </span>
+            <span class="status-item">
+                <span class="status-label">Points:</span>
+                <span class="status-value" id="points-value">0</span>
+            </span>
+            <span class="status-item">
+                <span class="status-label">FPS:</span>
+                <span class="status-value" id="fps-value">0</span>
+            </span>
+        </div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

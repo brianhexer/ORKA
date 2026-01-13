@@ -1,0 +1,20 @@
+{
+  "name": "web-slam-3d-reconstruction",
+  "version": "1.0.0",
+  "description": "Web-based real-time SLAM 3D reconstruction from webcam",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["slam", "3d", "reconstruction", "webcam", "three.js"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
