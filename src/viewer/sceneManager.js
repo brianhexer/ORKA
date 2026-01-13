@@ -1,5 +1,5 @@
 /**
- * Three.js scene management
+ * Enhanced Three.js scene management with LIDAR-like visualization
  */
 
 import * as THREE from 'three';
@@ -13,6 +13,10 @@ export class SceneManager {
         this.pointCloud = null;
         this.mesh = null;
         
+        // Visualization settings for LIDAR effect
+        this.pointSize = 0.08;
+        this.usePerspectiveDepth = true; // Points grow larger when closer (LIDAR effect)
+        
         this.init();
     }
     
@@ -25,7 +29,8 @@ export class SceneManager {
         
         // Scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1a1a1a);
+        this.scene.background = new THREE.Color(0x0a0a0a); // Darker for depth perception
+        this.scene.fog = new THREE.Fog(0x0a0a0a, 100, 1000); // Atmospheric fog for depth
         
         // Camera - use default aspect ratio if dimensions are invalid
         const aspect = (this.canvas.width && this.canvas.height) 
@@ -40,33 +45,40 @@ export class SceneManager {
         );
         this.camera.position.set(0, 0, 5);
         
-        // Renderer
+        // Renderer with enhanced settings
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
-            antialias: true
+            antialias: true,
+            alpha: true,
+            premultipliedAlpha: false
         });
         this.renderer.setSize(this.canvas.width, this.canvas.height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.sortObjects = true;
+        this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
         
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // Lighting for depth perception
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.2); // Reduced ambient
         this.scene.add(ambientLight);
         
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        directionalLight.position.set(5, 5, 5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 10);
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
         this.scene.add(directionalLight);
         
-        // Grid helper
-        const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+        // Add subtle grid for reference
+        const gridHelper = new THREE.GridHelper(20, 20, 0x222222, 0x111111);
+        gridHelper.position.y = -0.5;
         this.scene.add(gridHelper);
         
-        // Axes helper
-        const axesHelper = new THREE.AxesHelper(2);
+        // Add axes helper for orientation
+        const axesHelper = new THREE.AxesHelper(3);
         this.scene.add(axesHelper);
     }
     
     /**
-     * Update point cloud
+     * Update point cloud with depth-based coloring and sizing
      */
     updatePointCloud(positions, colors) {
         // Remove existing point cloud
@@ -87,14 +99,20 @@ export class SceneManager {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         
+        // Use vertex colors if available
         if (colors && colors.length === positions.length) {
             geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         }
         
+        // Create point material with enhanced settings for LIDAR effect
         const material = new THREE.PointsMaterial({
-            size: 0.05,
+            size: this.pointSize,
             vertexColors: colors && colors.length === positions.length,
-            color: 0xffffff
+            color: 0xffffff,
+            sizeAttenuation: this.usePerspectiveDepth,
+            fog: true,
+            transparent: false,
+            alphaTest: 0.0
         });
         
         this.pointCloud = new THREE.Points(geometry, material);
@@ -102,7 +120,7 @@ export class SceneManager {
     }
     
     /**
-     * Update mesh
+     * Update mesh with enhanced material
      */
     updateMesh(geometry) {
         // Remove existing mesh
@@ -120,10 +138,14 @@ export class SceneManager {
             return;
         }
         
+        // Enhanced material for better depth perception
         const material = new THREE.MeshStandardMaterial({
             vertexColors: geometry.attributes.color !== undefined,
-            color: 0xffffff,
-            side: THREE.DoubleSide
+            color: 0xcccccc,
+            side: THREE.DoubleSide,
+            metalness: 0.2,
+            roughness: 0.8,
+            fog: true
         });
         
         this.mesh = new THREE.Mesh(geometry, material);
@@ -191,5 +213,25 @@ export class SceneManager {
      */
     getMesh() {
         return this.mesh;
+    }
+    
+    /**
+     * Set point size for visualization adjustment
+     */
+    setPointSize(size) {
+        this.pointSize = size;
+        if (this.pointCloud && this.pointCloud.material) {
+            this.pointCloud.material.size = size;
+        }
+    }
+    
+    /**
+     * Toggle perspective depth effect
+     */
+    setPerspectiveDepth(enabled) {
+        this.usePerspectiveDepth = enabled;
+        if (this.pointCloud && this.pointCloud.material) {
+            this.pointCloud.material.sizeAttenuation = enabled;
+        }
     }
 }
